@@ -1,0 +1,78 @@
+import argparse
+from pathlib import Path
+
+arg_keys = []
+parser = argparse.ArgumentParser(description="2048 TDA")
+game_conf_group = parser.add_argument_group("ゲーム設定")
+game_conf_group.add_argument(
+    "-m", "--model", type=str, help="モデルの選択", required=True
+)
+game_conf_group.add_argument("-s", "--seed", type=int, help="シード値")
+game_conf_group.add_argument(
+    "-r",
+    "--restart",
+    action="store_true",
+    help="学習をリスタートする",
+)
+game_conf_group.add_argument(
+    "-S",
+    "--symmetry",
+    action="store_true",
+    help="対称性を考慮する",
+)
+game_conf_group.add_argument(
+    "--trainer",
+    type=str,
+    choices=["TDA", "D-TDA-X", "D-TDA-C", "D-TDA-CB"],
+    default="TDA",
+    help="学習手法を選択",
+)
+game_conf_group.add_argument(
+    "--target_update_freq",
+    type=int,
+    help="ターゲットネットワークの更新頻度",
+    default=10,
+)
+game_conf_group.add_argument(
+    "--consensus",
+    action="store_true",
+    help="二つのネットワークの合議による行動選択を行う",
+)
+parser.add_argument(
+    "-l",
+    "--log",
+    type=str,
+    help="ログレベル",
+    choices=["DEBUG", "INFO"],
+    default="INFO",
+)
+parser.add_argument(
+    "-H",
+    "--hours",
+    type=int,
+    default=0,
+    help="学習時間",
+)
+parser.add_argument(
+    "--load_main",
+    type=Path,
+    help="メインネットワークのモデルパス",
+)
+parser.add_argument(
+    "--load_target",
+    type=Path,
+    help="ターゲットネットワークのモデルパス",
+)
+parser.add_argument(
+    "--play_after_train",
+    action="store_true",
+    help="学習後にプレイを行う",
+)
+
+args = parser.parse_args()  # 4. 引数を解析
+for action in game_conf_group._group_actions:
+    # もしデフォルトと一致するのであれば
+    if action.default is not None and getattr(args, action.dest) == action.default:
+        continue
+    arg_keys.append(action.dest)
+game_conf = {k: getattr(args, k) for k in arg_keys}
