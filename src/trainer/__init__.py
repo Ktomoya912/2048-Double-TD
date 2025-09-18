@@ -65,22 +65,23 @@ def save_models(save_count: int = -1):
 def submit_batches(trainer: Trainer, executor: ThreadPoolExecutor):
     for i in range(tasks):
         executor.submit(trainer.play_game, i)
-    for pack in trainer.packs:
-        executor.submit(trainer.batch_trainer, pack)
+    executor.submit(trainer.batch_trainer, pack_main)
+    if args.trainer == "D_TDA_X":
+        executor.submit(trainer.batch_trainer, pack_target)
     return executor
 
 
 def main():
     try:
         packs = [pack_main, pack_target]
-        if args.trainer == "D-TDA-C":
+        if args.trainer == "D_TDA_C":
             trainer = D_TDA_C_Trainer(packs)
-        elif args.trainer == "D-TDA-CB":
+        elif args.trainer == "D_TDA_CB":
             trainer = D_TDA_CB_Trainer(packs)
         elif args.trainer == "TDA":
             packs = [pack_main]
             trainer = TDA_Trainer(packs)
-        elif args.trainer == "D-TDA-X":
+        elif args.trainer == "D_TDA_X":
             trainer = D_TDA_X_Trainer(packs)
         else:
             raise ValueError(f"Unknown trainer type: {args.trainer}")

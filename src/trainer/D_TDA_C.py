@@ -1,10 +1,7 @@
 import logging
 
-import torch
-
 from common.args import args
-from common.config import BAT_SIZE, DEVICE, MAIN_NETWORK, TARGET_NETWORK
-from common.utils import write_make_input
+from common.config import BAT_SIZE, MAIN_NETWORK, TARGET_NETWORK
 
 from .common import Trainer
 
@@ -12,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class D_TDA_C_Trainer(Trainer):
-    def train(self, records: list[dict], pack: dict, count: int = 1):
+    def _train(self, records: list[dict], pack: dict, count: int = 1):
         # inputsには盤面の情報、targetsには評価値が入る
         target_values = []
         boards = []
@@ -26,29 +23,12 @@ class D_TDA_C_Trainer(Trainer):
         logger.info(f"train {count=}, {len(boards)=}, {len(target_values)=}")
         if len(boards) == 0:
             logger.warning("No records to train.")
-            return
+            return None, None
         if len(boards) != len(target_values):
             logger.error(f"Length mismatch: {len(boards)=}, {len(target_values)=}")
-            return
+            return None, None
 
-        model = pack["model"]
-        optimizer = pack["optimizer"]
-
-        model.train()  # モデルを学習モードに設定
-        optimizer.zero_grad()  # 勾配をゼロに初期化
-        tmp = torch.zeros(len(boards), 99, device="cpu")
-        for i in range(len(boards)):
-            write_make_input(boards[i], tmp[i, :])
-        inputs = tmp.to(DEVICE)
-        # ネットワークにデータを入力し、順伝播を行う
-        outputs = model.forward(inputs)
-        targets = torch.as_tensor(target_values, dtype=torch.float32)
-        targets = targets.reshape(-1, 1)  # ターゲットの形状を調整
-        targets = targets.to(DEVICE)
-        loss = self.criterion(outputs, targets)  # 損失を計算
-        loss.backward()  # 逆伝播を行い、各パラメータの勾配を計算
-        optimizer.step()
-        logger.debug(f"loss : {loss.item()}")
+        return boards, target_values
 
     def batch_trainer(self, pack: dict):
         train_count = 0

@@ -7,6 +7,13 @@ game_conf_group = parser.add_argument_group("ゲーム設定")
 game_conf_group.add_argument(
     "-m", "--model", type=str, help="モデルの選択", required=True
 )
+game_conf_group.add_argument(
+    "--trainer",
+    type=str,
+    choices=["TDA", "D_TDA_X", "D_TDA_C", "D_TDA_CB"],
+    required=True,
+    help="学習手法を選択",
+)
 game_conf_group.add_argument("-s", "--seed", type=int, help="シード値")
 game_conf_group.add_argument(
     "-r",
@@ -19,13 +26,6 @@ game_conf_group.add_argument(
     "--symmetry",
     action="store_true",
     help="対称性を考慮する",
-)
-game_conf_group.add_argument(
-    "--trainer",
-    type=str,
-    choices=["TDA", "D-TDA-X", "D-TDA-C", "D-TDA-CB"],
-    default="TDA",
-    help="学習手法を選択",
 )
 game_conf_group.add_argument(
     "--target_update_freq",
@@ -50,7 +50,7 @@ parser.add_argument(
     "-H",
     "--hours",
     type=int,
-    default=0,
+    default=24,
     help="学習時間",
 )
 parser.add_argument(
@@ -64,6 +64,7 @@ parser.add_argument(
     help="ターゲットネットワークのモデルパス",
 )
 parser.add_argument(
+    "-P",
     "--play_after_train",
     action="store_true",
     help="学習後にプレイを行う",

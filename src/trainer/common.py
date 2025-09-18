@@ -3,11 +3,18 @@ import threading
 
 import numpy as np
 import torch
-from torch import nn
+from torch import nn, optim
 
 from common.args import args
-from common.config import MAIN_NETWORK, TARGET_NETWORK
-from common.utils import board_print, get_eval, get_values, mirror_board, rotate_board
+from common.config import DEVICE, MAIN_NETWORK, TARGET_NETWORK
+from common.utils import (
+    board_print,
+    get_eval,
+    get_values,
+    mirror_board,
+    rotate_board,
+    write_make_input,
+)
 from game_2048_3_3 import State
 
 logger = logging.getLogger(__name__)
@@ -54,6 +61,32 @@ class Trainer:
                 }
             )
 
+    def _train(self) -> tuple[list[np.ndarray], float]:
+        raise NotImplementedError
+
+    def train(self, records: list[dict], pack: dict, count: int = 1):
+        boards, values = self._train(records, pack, count)
+        if boards is None or values is None:
+            return
+        model = pack["model"]
+        optimizer: optim.Adam = pack["optimizer"]
+
+        model.train()  # モデルを学習モードに設定
+        optimizer.zero_grad()  # 勾配をゼロに初期化
+        tmp = torch.zeros(len(boards), 99, device="cpu")
+        for i in range(len(boards)):
+            write_make_input(boards[i], tmp[i, :])
+        inputs = tmp.to(DEVICE)
+        # ネットワークにデータを入力し、順伝播を行う
+        outputs = model.forward(inputs)
+        targets = torch.as_tensor(values, dtype=torch.float32)
+        targets = targets.reshape(-1, 1)  # ターゲットの形状を調整
+        targets = targets.to(DEVICE)
+        loss = self.criterion(outputs, targets)  # 損失を計算
+        loss.backward()  # 逆伝播を行い、各パラメータの勾配を計算
+        optimizer.step()
+        logger.debug(f"loss : {loss.item()}")
+
     def _play(self, packs, canmov, bd: State, last_board):
         self_values, other_values = get_values(canmov, bd.clone(), packs)
         # 自分自身の評価値を取得
@@ -83,7 +116,7 @@ class Trainer:
                 bd = State()
                 bd.initGame()
                 turn = 0
-                if args.trainer == "D-TDA-X":
+                if args.trainer == "D_TDA_X":
                     packs.reverse()
                 for count in range(10_000):
                     last_board = None

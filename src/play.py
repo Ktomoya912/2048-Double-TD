@@ -51,7 +51,7 @@ def play_game(thread_id: int):
             evals.append((main_values, progress))
 
             self_max_index = np.argmax(main_values)
-            if args.ddqn_type == "toggle_sum":
+            if args.consensus:
                 # self_valuesとother_valuesのそれぞれを足し合わせる
                 values = np.array(main_values) + np.array(target_values)
                 sample_idx = np.argmax(values)
