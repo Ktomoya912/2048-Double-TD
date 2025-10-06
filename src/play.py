@@ -7,9 +7,8 @@ from queue import Queue
 
 import numpy as np
 
-from common import MAIN_NETWORK, TARGET_NETWORK
 from common.args import args
-from common.config import get_model_name
+from common.config import MAIN_NETWORK, TARGET_NETWORK, get_model_name
 from common.utils import calc_progress, get_values
 from game_2048_3_3 import State
 
