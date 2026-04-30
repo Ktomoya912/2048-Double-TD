@@ -77,3 +77,26 @@ if args.load_main:
 if args.load_target:
     if data := get_trained_model(args.load_target, DEVICE):
         TARGET_NETWORK.load_state_dict(data[0])
+
+MULTI_HEAD_MODELS = {"CNN_DEEP_MULTI", "ALPHA_ZERO_STATE"}
+POLICY_SUPPORTED_MODELS = {"CNN_DEEP", "CNN_DEEP_MULTI", "ALPHA_ZERO_STATE"}
+
+if args.model in MULTI_HEAD_MODELS and not args.with_policy:
+    raise ValueError(
+        f"--model {args.model} はマルチヘッドモデルです。--with_policy フラグが必要です。"
+    )
+
+POLICY_NETWORK: torch.nn.Module | None = None
+if args.with_policy:
+    if args.model not in POLICY_SUPPORTED_MODELS:
+        raise ValueError(
+            f"--with_policy は {POLICY_SUPPORTED_MODELS} のみ対応しています。"
+            f" 指定されたモデル: {args.model}"
+        )
+    if args.model not in MULTI_HEAD_MODELS:
+        exec("from models import CNN_DEEP_POLICY as policy_modeler")
+        POLICY_NETWORK = policy_modeler.Model().to(DEVICE)  # noqa: F821
+        logger.info("POLICY_NETWORK (CNN_DEEP_POLICY) initialized.")
+        if args.load_policy:
+            if data := get_trained_model(args.load_policy, DEVICE):
+                POLICY_NETWORK.load_state_dict(data)

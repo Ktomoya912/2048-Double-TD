@@ -64,6 +64,16 @@ parser.add_argument(
     help="ターゲットネットワークのモデルパス",
 )
 parser.add_argument(
+    "--with_policy",
+    action="store_true",
+    help="Policyモデルの同時学習を有効にする",
+)
+parser.add_argument(
+    "--load_policy",
+    type=Path,
+    help="Policyモデルのパス（--with_policy時のみ有効）",
+)
+parser.add_argument(
     "-P",
     "--play_after_train",
     action="store_true",
