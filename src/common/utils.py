@@ -124,3 +124,21 @@ def get_one_values(canmov: list[bool], bd: State, model: torch.nn.Module):
             values[i] = float(result.data[i]) + sub_list[i]
 
     return values
+
+
+# ACTION_TRANSFORM[symmetry_idx][original_action] = transformed_action
+# Sequence matches put_queue() in Trainer:
+#   0=original, 1=CW1, 2=CW2, 3=CW3,
+#   4=M(CW3), 5=CW∘M(CW3), 6=CW2∘M(CW3), 7=CW3∘M(CW3)
+# Derived from game_2048_3_3.py: 0=Up,1=Right,2=Down,3=Left
+# CW rotation: action → (action+1)%4; LR mirror: Up↔Up, Right↔Left, Down↔Down
+ACTION_TRANSFORM: list[list[int]] = [
+    [0, 1, 2, 3],  # original
+    [1, 2, 3, 0],  # CW×1
+    [2, 3, 0, 1],  # CW×2
+    [3, 0, 1, 2],  # CW×3
+    [1, 0, 3, 2],  # Mirror(CW×3)
+    [2, 1, 0, 3],  # CW×1 ∘ Mirror(CW×3)
+    [3, 2, 1, 0],  # CW×2 ∘ Mirror(CW×3)
+    [0, 3, 2, 1],  # CW×3 ∘ Mirror(CW×3)
+]
