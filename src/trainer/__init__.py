@@ -4,6 +4,7 @@ import random
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from pathlib import Path
 from queue import Queue
 
 import numpy as np
@@ -11,13 +12,22 @@ import torch
 from torch import optim
 
 from common.args import args
-from common.config import LOG_PATH, MAIN_NETWORK, MODEL_DIR, TARGET_NETWORK, TIME_LIMIT
+from common.config import (
+    LOG_PATH,
+    MAIN_NETWORK,
+    MODEL_DIR,
+    MULTI_HEAD_MODELS,
+    POLICY_NETWORK,
+    TARGET_NETWORK,
+    TIME_LIMIT,
+)
 
 from .common import Trainer
 from .D_TDA_C import D_TDA_C_Trainer
 from .D_TDA_CB import D_TDA_CB_Trainer
 from .D_TDA_X import D_TDA_X_Trainer
 from .TDA import TDA_Trainer
+from .multi_head import MultiHeadTrainer
 
 if args.seed is not None:
     random.seed(args.seed)
@@ -44,22 +54,40 @@ pack_target = {
     "queue": Queue(tasks * 2),
 }
 
+policy_pack = None
+if args.with_policy and POLICY_NETWORK is not None:
+    optimizer_policy = optim.Adam(POLICY_NETWORK.parameters(), lr=0.001)
+    policy_pack = {
+        "model": POLICY_NETWORK,
+        "optimizer": optimizer_policy,
+        "name": "policy",
+        "queue": Queue(tasks * 2),
+    }
+
 
 def clear_queues():
-    while pack_main["queue"].qsize() > 0 and pack_target["queue"].qsize() > 0:
-        pack_main["queue"].get()
-        pack_target["queue"].get()
-    logger.info("Queues cleared, stopping threads...")
+    for pack in [pack_main, pack_target, policy_pack]:
+        if pack is None:
+            continue
+        while pack["queue"].qsize() > 0:
+            try:
+                pack["queue"].get_nowait()
+            except Exception:
+                break
+    logger.info("Queues cleared.")
 
 
 def save_models(save_count: int = -1):
-    main_model_path = MODEL_DIR / f"{LOG_PATH.stem}_{save_count:02d}_main.pth"
-    target_model_path = MODEL_DIR / f"{LOG_PATH.stem}_{save_count:02d}_target.pth"
-
-    torch.save(MAIN_NETWORK.state_dict(), main_model_path)
-    logger.info(f"save {main_model_path.name} {save_count=}")
-    torch.save(TARGET_NETWORK.state_dict(), target_model_path)
-    logger.info(f"save {target_model_path.name} {save_count=}")
+    main_path = MODEL_DIR / f"{LOG_PATH.stem}_{save_count:02d}_main.pth"
+    target_path = MODEL_DIR / f"{LOG_PATH.stem}_{save_count:02d}_target.pth"
+    torch.save(MAIN_NETWORK.state_dict(), main_path)
+    logger.info(f"saved {main_path.name}")
+    torch.save(TARGET_NETWORK.state_dict(), target_path)
+    logger.info(f"saved {target_path.name}")
+    if policy_pack is not None:
+        policy_path = MODEL_DIR / f"{LOG_PATH.stem}_{save_count:02d}_policy.pth"
+        torch.save(POLICY_NETWORK.state_dict(), policy_path)
+        logger.info(f"saved {policy_path.name}")
 
 
 def submit_batches(trainer: Trainer, executor: ThreadPoolExecutor):
@@ -68,25 +96,34 @@ def submit_batches(trainer: Trainer, executor: ThreadPoolExecutor):
     executor.submit(trainer.batch_trainer, pack_main)
     if args.trainer == "D_TDA_X":
         executor.submit(trainer.batch_trainer, pack_target)
+    if policy_pack is not None:
+        executor.submit(trainer.policy_batch_trainer, policy_pack)
     return executor
 
 
 def main():
     try:
         packs = [pack_main, pack_target]
-        if args.trainer == "D_TDA_C":
-            trainer = D_TDA_C_Trainer(packs)
+        is_multi_head = args.model in MULTI_HEAD_MODELS
+
+        if is_multi_head:
+            trainer = MultiHeadTrainer(packs)
+        elif args.trainer == "D_TDA_C":
+            trainer = D_TDA_C_Trainer(packs, policy_pack=policy_pack)
         elif args.trainer == "D_TDA_CB":
-            trainer = D_TDA_CB_Trainer(packs)
+            trainer = D_TDA_CB_Trainer(packs, policy_pack=policy_pack)
         elif args.trainer == "TDA":
             packs = [pack_main]
-            trainer = TDA_Trainer(packs)
+            trainer = TDA_Trainer(packs, policy_pack=policy_pack)
         elif args.trainer == "D_TDA_X":
-            trainer = D_TDA_X_Trainer(packs)
+            trainer = D_TDA_X_Trainer(packs, policy_pack=policy_pack)
         else:
             raise ValueError(f"Unknown trainer type: {args.trainer}")
 
-        executor = ThreadPoolExecutor(max_workers=tasks + len(packs))
+        worker_count = tasks + (2 if args.trainer == "D_TDA_X" else 1)
+        if policy_pack is not None:
+            worker_count += 1
+        executor = ThreadPoolExecutor(max_workers=worker_count)
         executor = submit_batches(trainer, executor)
 
         start_time = datetime.now()
