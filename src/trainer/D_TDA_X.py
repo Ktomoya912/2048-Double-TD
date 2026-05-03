@@ -3,11 +3,12 @@ import logging
 from common.config import BAT_SIZE
 
 from .common import Trainer
+from .policy_mixin import PolicyMixin
 
 logger = logging.getLogger(__name__)
 
 
-class D_TDA_X_Trainer(Trainer):
+class D_TDA_X_Trainer(PolicyMixin, Trainer):
     # 学習用の関数
     def _train(self, records: list[dict], pack: dict, count: int = 1):
         other_values = []

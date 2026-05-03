@@ -16,12 +16,11 @@ from common.utils import (
     write_make_input,
 )
 from game_2048_3_3 import State
-from .policy_mixin import PolicyMixin
 
 logger = logging.getLogger(__name__)
 
 
-class Trainer(PolicyMixin):
+class Trainer:
     def __init__(self, packs, policy_pack=None):
         self.stop_event = threading.Event()
         self.criterion = nn.MSELoss()

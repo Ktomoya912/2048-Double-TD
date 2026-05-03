@@ -4,11 +4,12 @@ from common.args import args
 from common.config import BAT_SIZE, MAIN_NETWORK, TARGET_NETWORK
 
 from .common import Trainer
+from .policy_mixin import PolicyMixin
 
 logger = logging.getLogger(__name__)
 
 
-class D_TDA_C_Trainer(Trainer):
+class D_TDA_C_Trainer(PolicyMixin, Trainer):
     def _train(self, records: list[dict], pack: dict, count: int = 1):
         # inputsには盤面の情報、targetsには評価値が入る
         target_values = []

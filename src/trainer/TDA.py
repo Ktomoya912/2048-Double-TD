@@ -8,12 +8,13 @@ from common.utils import get_one_values
 from game_2048_3_3 import State
 
 from .common import Trainer
+from .policy_mixin import PolicyMixin
 
 # ゲームごとに貯めて学習
 logger = logging.getLogger(__name__)
 
 
-class TDA_Trainer(Trainer):
+class TDA_Trainer(PolicyMixin, Trainer):
     def _play(self, packs, canmov, bd: State, last_board):
         state_before = bd.board.copy()
         main_values = get_one_values(canmov, bd.clone(), packs[0]["model"])
