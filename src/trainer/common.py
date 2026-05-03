@@ -16,15 +16,17 @@ from common.utils import (
     write_make_input,
 )
 from game_2048_3_3 import State
+from .policy_mixin import PolicyMixin
 
 logger = logging.getLogger(__name__)
 
 
-class Trainer:
-    def __init__(self, packs):
+class Trainer(PolicyMixin):
+    def __init__(self, packs, policy_pack=None):
         self.stop_event = threading.Event()
         self.criterion = nn.MSELoss()
         self.packs: list[dict] = packs
+        self.policy_pack = policy_pack  # None when --with_policy is not set
 
     def put_queue(
         self, board: np.ndarray, self_value: float, other_value: float, packs
@@ -88,16 +90,17 @@ class Trainer:
         logger.debug(f"loss : {loss.item()}")
 
     def _play(self, packs, canmov, bd: State, last_board):
+        state_before = bd.board.copy()
         self_values, other_values = get_values(canmov, bd.clone(), packs)
-        # 自分自身の評価値を取得
         self_max_index = np.argmax(self_values)
         if args.consensus:
-            # self_valuesとother_valuesのそれぞれを足し合わせる
             values = np.array(self_values) + np.array(other_values)
             sample_idx = np.argmax(values)
             bd.play(sample_idx)
+            best_action = int(sample_idx)
         else:
             bd.play(self_max_index)
+            best_action = int(self_max_index)
         if last_board is not None:
             self.put_queue(
                 last_board.copy(),
@@ -105,6 +108,8 @@ class Trainer:
                 other_value=other_values[self_max_index],
                 packs=packs,
             )
+        if self.policy_pack is not None and any(canmov):
+            self.put_policy_queue(state_before, best_action)
 
     def play_game(self, thread_id: int):
         packs = self.packs.copy()

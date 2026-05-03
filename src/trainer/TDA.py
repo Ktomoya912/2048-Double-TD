@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 class TDA_Trainer(Trainer):
     def _play(self, packs, canmov, bd: State, last_board):
+        state_before = bd.board.copy()
         main_values = get_one_values(canmov, bd.clone(), packs[0]["model"])
-        # main_valuesから最大の評価値を持つインデックスを取得
         main_max_index = np.argmax(main_values)
         bd.play(main_max_index)
         if last_board is not None:
@@ -26,6 +26,8 @@ class TDA_Trainer(Trainer):
                 other_value=torch.tensor(0),
                 packs=packs,
             )
+        if self.policy_pack is not None and any(canmov):
+            self.put_policy_queue(state_before, int(main_max_index))
 
     def _train(self, records: list[dict], pack: dict, count: int = 1):
         # inputsには盤面の情報、targetsには評価値が入る
