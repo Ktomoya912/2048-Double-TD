@@ -13,6 +13,7 @@ from torch import optim
 
 from common.args import args
 from common.config import (
+    BAT_SIZE,
     LOG_PATH,
     MAIN_NETWORK,
     MODEL_DIR,
@@ -26,8 +27,8 @@ from .common import Trainer
 from .D_TDA_C import D_TDA_C_Trainer
 from .D_TDA_CB import D_TDA_CB_Trainer
 from .D_TDA_X import D_TDA_X_Trainer
-from .TDA import TDA_Trainer
 from .multi_head import MultiHeadTrainer
+from .TDA import TDA_Trainer
 
 if args.seed is not None:
     random.seed(args.seed)
@@ -45,13 +46,13 @@ pack_main = {
     "model": MAIN_NETWORK,
     "optimizer": optimizer_main,
     "name": "main",
-    "queue": Queue(tasks * 2),
+    "queue": Queue(BAT_SIZE * 2),
 }
 pack_target = {
     "model": TARGET_NETWORK,
     "optimizer": optimizer_target,
     "name": "target",
-    "queue": Queue(tasks * 2),
+    "queue": Queue(BAT_SIZE * 2),
 }
 
 policy_pack = None

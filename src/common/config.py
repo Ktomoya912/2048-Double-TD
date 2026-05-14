@@ -73,10 +73,10 @@ TARGET_NETWORK: torch.nn.Module = modeler2.Model().to(DEVICE)  # noqa: F821
 BAT_SIZE = 1024
 if args.load_main:
     if data := get_trained_model(args.load_main, DEVICE):
-        MAIN_NETWORK.load_state_dict(data[0])
+        MAIN_NETWORK.load_state_dict(data)
 if args.load_target:
     if data := get_trained_model(args.load_target, DEVICE):
-        TARGET_NETWORK.load_state_dict(data[0])
+        TARGET_NETWORK.load_state_dict(data)
 
 MULTI_HEAD_MODELS = {"CNN_DEEP_MULTI", "ALPHA_ZERO_STATE"}
 POLICY_SUPPORTED_MODELS = {"CNN_DEEP", "CNN_DEEP_MULTI", "ALPHA_ZERO_STATE"}

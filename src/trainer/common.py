@@ -28,7 +28,11 @@ class Trainer:
         self.policy_pack = policy_pack  # None when --with_policy is not set
 
     def put_queue(
-        self, board: np.ndarray, self_value: float, other_value: float, packs
+        self,
+        board: np.ndarray,
+        self_value: float | torch.Tensor,
+        other_value: float | torch.Tensor,
+        packs: list[dict],
     ):
         board_cp = board.copy()
         queue = packs[0]["queue"]
@@ -62,7 +66,9 @@ class Trainer:
                 }
             )
 
-    def _train(self) -> tuple[list[np.ndarray], float]:
+    def _train(
+        self, records: list[dict], pack: dict, count: int = 1
+    ) -> tuple[list[np.ndarray], float]:
         raise NotImplementedError
 
     def train(self, records: list[dict], pack: dict, count: int = 1):

@@ -3,6 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,7 +14,7 @@ class LogFile:
     time: datetime
     path: Path
     parsed: dict
-    lines: list[dict] = None
+    lines: Optional[list[dict]] = None
     hours: int = 12
 
     def __post_init__(self):
@@ -57,12 +58,12 @@ class LogFile:
 plt.rcParams["font.size"] = 14
 BASE_DIR = Path(__file__).parent.parent.parent
 print(f"Base directory: {BASE_DIR}")
-seed_txt = "seed-3"
-LOG_DIR = BASE_DIR / "log" / seed_txt
+seed_txt = "seed-1"
+LOG_DIR = BASE_DIR / "log"
 interval = 3600
 
 
-def parse_path(path: Path) -> LogFile:
+def parse_path(path: Path) -> Optional[LogFile]:
     if match := re.match(
         r"(?:\[(.*?)\]_)*(\d{8}T\d{6})_\[(.*)\]$", path.stem, re.IGNORECASE
     ):
@@ -74,7 +75,8 @@ def parse_path(path: Path) -> LogFile:
             path=path,
             parsed=kv_dict,
         )
-    raise ValueError(f"Invalid log file name: {path.stem}")
+    print(f"Skip (unrecognized filename): {path.name}")
+    return None
 
 
 def parse_line(line: str):
@@ -137,9 +139,10 @@ def aggregate_by_interval(data, interval):
 
 
 # plt.figure(figsize=(7, 7))
-log_files = [parse_path(log) for log in LOG_DIR.glob("*.log")]
+log_files = [lf for log in LOG_DIR.glob("*.log") if (lf := parse_path(log))]
 structured_logs = defaultdict(list)
 lbl_dict = {
+    f"[model-CNN_DEEP][trainer-TDA][{seed_txt}][symmetry-True]": "TDA",
     f"[model-CNN_DEEP][trainer-D_TDA_X][{seed_txt}][symmetry-True]": "D-TDA-X",
     f"[model-CNN_DEEP][trainer-D_TDA_C][{seed_txt}][symmetry-True][target_update_freq-100]": "D-TDA-C",
     f"[model-CNN_DEEP][trainer-D_TDA_CB][{seed_txt}][symmetry-True][target_update_freq-50]": "D-TDA-CB",
@@ -153,7 +156,8 @@ x_limit = 0
 for i, label in enumerate(lbl_dict.values()):
     logs = structured_logs[label]
     if len(logs) == 0:
-        raise ValueError(f"Invalid log file: {label}")
+        print(f"Skip (no logs for label): {label}")
+        continue
 
     logs.sort(key=lambda x: x.time)
     if len(logs) >= 2:
@@ -215,7 +219,7 @@ for i, label in enumerate(lbl_dict.values()):
 plt.xlabel("Time (hours)")
 plt.ylabel(f"Score ({interval // 60}-min Moving Average)")
 plt.legend(loc="lower right", fontsize=14)
-plt.ylim(2000, 6500)
+plt.ylim(0, 6500)
 plt.xlim(0, x_limit)
 plt.grid()
 save_dir = Path() / "dist"
